@@ -1,0 +1,143 @@
+#
+# example ESP8266 or ESP32 Huzzah mqtt publish/subscribe with io.adafruit.com
+# phil van allen
+#
+# thanks to https://github.com/MikeTeachman/micropython-adafruit-mqtt-esp8266/blob/master/mqtt-to-adafruit.py
+#
+
+import network
+import time
+import utime
+import machine
+import _thread as th
+from machine import Pin
+from umqtt.simple import MQTTClient
+
+courtLed = machine.Pin(14, Pin.OUT)
+roomLed = machine.Pin(32, Pin.OUT)
+lotLed = machine.Pin(15, Pin.OUT)
+cafeLed = machine.Pin(33, Pin.OUT)
+fieldLed = machine.Pin(27, Pin.OUT)
+
+pwmCourt = machine.PWM(courtLed)
+pwmRoom = machine.PWM(roomLed)
+pwmLot = machine.PWM(lotLed)
+pwmCafe = machine.PWM(cafeLed)
+pwmField = machine.PWM(fieldLed)
+
+pwmCourt.freq(500)
+pwmRoom.freq(500)
+pwmLot.freq(500)
+pwmCafe.freq(500)
+pwmField.freq(500)
+
+delay = 0.025
+
+pwmCourt_running = True
+pwmRoom_running = True
+pwmLot_running = True
+pwmCafe_running = True
+pwmField_running = True
+
+def fade(pwm, secs, run):
+  steps = int(round(1024/(secs / delay / 2)))
+  #print(str(secs) + " " + str(steps) + " ")
+  while run():
+    for i in range(0,1024,steps):
+      pwm.duty(i)
+      time.sleep(delay)
+    for i in range(1023, -1, (-1 * steps)):
+      pwm.duty(i)
+      time.sleep(delay)
+  pwm.duty(0)
+
+def pwmCourt_run():
+  return pwmCourt_running
+
+def pwmRoom_run():
+  return pwmRoom_running
+
+def pwmLot_run():
+  return pwmLot_running
+
+def pwmCafe_run():
+  return pwmCafe_running
+
+def pwmField_run():
+  return pwmField_running
+
+def sub_cb(topic, msg):
+  value = float(str(msg,'utf-8'))
+  #print("subscribed value = {}".format(value))
+  if value < 2000:
+      th.start_new_thread(fade, (pwmCourt, 0.5, pwmCourt_run))
+      th.start_new_thread(fade, (pwmRoom, 1, pwmRoom_run))
+      th.start_new_thread(fade, (pwmLot, 2, pwmLot_run))
+      th.start_new_thread(fade, (pwmCafe, 1, pwmCafe_run))
+      th.start_new_thread(fade, (pwmField, 0.5, pwmField_run))
+  else:
+    print("HI")
+  """elif value > 1000 and value < 2000:
+      th.start_new_thread(fade, (pwmCourt, 2))
+      th.start_new_thread(fade, (pwmRoom, 1))
+      th.start_new_thread(fade, (pwmLot, 2))
+      th.start_new_thread(fade, (pwmCafe, 1))
+      th.start_new_thread(fade, (pwmField, 0.5))
+  elif value > 100 and value < 1000:
+      th.start_new_thread(fade, (pwmCourt, 0.5))
+      th.start_new_thread(fade, (pwmRoom, 1))
+      th.start_new_thread(fade, (pwmLot, 2))
+      th.start_new_thread(fade, (pwmCafe, 1))
+      th.start_new_thread(fade, (pwmField, 0.5))
+  elif value < 100:
+      th.start_new_thread(fade, (pwmCourt, 0.5))
+      th.start_new_thread(fade, (pwmRoom, 1))
+      th.start_new_thread(fade, (pwmLot, 2))
+      th.start_new_thread(fade, (pwmCafe, 1))
+      th.start_new_thread(fade, (pwmField, 0.5))"""
+
+
+#
+# connect the ESP to local wifi network
+#
+yourWifiSSID = "ACCD"
+yourWifiPassword = "tink1930"
+sta_if = network.WLAN(network.STA_IF)
+if not sta_if.isconnected():
+  sta_if.active(True)
+  sta_if.connect(yourWifiSSID, yourWifiPassword)
+  while not sta_if.isconnected():
+    pass
+print("connected to WiFi")
+
+#
+# connect ESP to Adafruit IO using MQTT
+#
+
+myMqttClient = "ioadafruit_subjarretl"  # replace with your own client name
+adafruitUsername = "jarretl"  # can be found at "My Account" at adafruit.com
+adafruitAioKey = "61edc164ce1a44cba78cf1b73a0d4e1e"  # can be found by clicking on "VIEW AIO KEYS" when viewing an Adafruit IO Feed
+adafruitFeed = adafruitUsername + "/feeds/mydata" # replace "test" with your feed name
+adafruitIoUrl = "io.adafruit.com"
+
+c = MQTTClient(myMqttClient, adafruitIoUrl, 0, adafruitUsername, adafruitAioKey)
+c.set_callback(sub_cb)
+c.connect()
+c.subscribe(bytes(adafruitFeed,'utf-8'))
+
+#adc = machine.ADC(machine.Pin(34))
+#adc.atten(machine.ADC.ATTN_11DB)
+
+while True:
+  #number = adc.read()
+  #print(number)
+  #c.publish(adafruitFeed, str(number))
+  print("waiting...")
+  time.sleep(2)
+  c.check_msg()
+
+
+
+
+
+
