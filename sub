@@ -1,0 +1,159 @@
+#
+# example ESP8266 or ESP32 Huzzah mqtt publish/subscribe with io.adafruit.com
+# phil van allen
+#
+# thanks to https://github.com/MikeTeachman/micropython-adafruit-mqtt-esp8266/blob/master/mqtt-to-adafruit.py
+#
+
+import network
+import time
+import utime
+import machine
+from machine import Pin
+from umqtt.simple import MQTTClient
+
+courtLed = machine.Pin(14)
+roomLed = machine.Pin(32)
+lotLed = machine.Pin(15)
+cafeLed = machine.Pin(33)
+fieldLed = machine.Pin(27)
+
+pwmCourt = machine.PWM(courtLed)
+pwmRoom = machine.PWM(roomLed)
+pwmLot = machine.PWM(lotLed)
+pwmCafe = machine.PWM(cafeLed)
+pwmField = machine.PWM(fieldLed)
+
+pwmCourt.freq(500)
+pwmRoom.freq(500)
+pwmLot.freq(500)
+pwmCafe.freq(500)
+pwmField.freq(500)
+
+def sub_cb(topic, msg):
+  value = float(str(msg,'utf-8'))
+  print("subscribed value = {}".format(value))
+  pwmRoom.duty(20)
+  pwmLot.duty(20)
+  pwmCafe.duty(20)
+  pwmField.duty(20)
+  while value > 2000:
+      courtLight(1)
+      roomLight(10)
+      lotLight(1)
+      cafeLight(10)
+      fieldLight(1)
+      c.check_msg()
+  while value > 1000 and value < 2000:
+      courtLight(10)
+      roomLight(10)
+      lotLight(100)
+      cafeLight(10)
+      fieldLight(100)
+      c.check_msg()
+  while value > 100 and value < 1000:
+      courtLight(100)
+      roomLight(1000)
+      lotLight(1000)
+      cafeLight(100)
+      fieldLight(1000)
+      c.check_msg()
+  while value < 100:
+      pwmCourt.duty(100)
+      pwmRoom.duty(1)
+      pwmLot.duty(1)
+      pwmCafe.duty(1)
+      pwmField.duty(1)
+      c.check_msg()
+
+def courtLight(s):
+    for duty in range(0, 1023, s):
+      pwmCourt.duty(duty)
+      #utime.sleep_ms(100)
+    for duty in range(1023, 0, -s):
+      pwmCourt.duty(duty)
+      #utime.sleep_ms(100)
+    #c.check_msg()
+
+def roomLight(s):
+    for duty in range(0, 1023, s):
+      pwmRoom.duty(duty)
+      #utime.sleep_ms(100)
+    for duty in range(1023, 0, -s):
+      pwmRoom.duty(duty)
+      #utime.sleep_ms(100)
+    #c.check_msg()
+
+def lotLight(s):
+    for duty in range(0, 1023, s):
+      pwmLot.duty(duty)
+      #utime.sleep_ms(100)
+    for duty in range(1023, 0, -s):
+      pwmLot.duty(duty)
+      #utime.sleep_ms(100)
+    #c.check_msg()
+
+def cafeLight(s):
+    for duty in range(0, 1023, s):
+      pwmCafe.duty(duty)
+      #utime.sleep_ms(100)
+    for duty in range(1023, 0, -s):
+      pwmCafe.duty(duty)
+      #utime.sleep_ms(100)
+    #c.check_msg()
+
+def fieldLight(s):
+    for duty in range(0, 1023, s):
+      pwmField.duty(duty)
+      #utime.sleep_ms(100)
+    for duty in range(1023, 0, -s):
+      pwmField.duty(duty)
+      #utime.sleep_ms(100)
+    #c.check_msg()
+
+
+
+#
+# connect the ESP to local wifi network
+#
+yourWifiSSID = "ACCD"
+yourWifiPassword = "tink1930"
+sta_if = network.WLAN(network.STA_IF)
+if not sta_if.isconnected():
+  sta_if.active(True)
+  sta_if.connect(yourWifiSSID, yourWifiPassword)
+  while not sta_if.isconnected():
+    pass
+print("connected to WiFi")
+
+#
+# connect ESP to Adafruit IO using MQTT
+#
+
+myMqttClient = "ioadafruit_subjarretl"  # replace with your own client name
+adafruitUsername = "jarretl"  # can be found at "My Account" at adafruit.com
+adafruitAioKey = "61edc164ce1a44cba78cf1b73a0d4e1e"  # can be found by clicking on "VIEW AIO KEYS" when viewing an Adafruit IO Feed
+adafruitFeed = adafruitUsername + "/feeds/mydata" # replace "test" with your feed name
+adafruitIoUrl = "io.adafruit.com"
+
+c = MQTTClient(myMqttClient, adafruitIoUrl, 0, adafruitUsername, adafruitAioKey)
+c.set_callback(sub_cb)
+c.connect()
+c.subscribe(bytes(adafruitFeed,'utf-8'))
+
+#adc = machine.ADC(machine.Pin(34))
+#adc.atten(machine.ADC.ATTN_11DB)
+
+while True:
+  #number = adc.read()
+  #print(number)
+  #c.publish(adafruitFeed, str(number))
+  print("waiting...")
+  time.sleep(1)
+  c.check_msg()
+
+
+
+
+
+
